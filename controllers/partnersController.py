@@ -1,19 +1,26 @@
 from flask import request, jsonify
 from flask_jwt_extended import get_jwt_identity
-
+from bson import ObjectId
 from config.database import db
 
 
 def create_partner_profile():
 
     user_id = get_jwt_identity()
+
+    if not ObjectId.is_valid(user_id):
+        return jsonify({
+            "message": "Invalid user ID"
+        }), 400
+
+    user_id = ObjectId(user_id)
     data = request.get_json()
 
     # -------------------------
     # Basic information
     # -------------------------
 
-    name = data.get("name")
+    # name = data.get("name")
     age = data.get("age")
     gender = data.get("gender")
     occupation = data.get("occupation")
@@ -32,7 +39,7 @@ def create_partner_profile():
     # -------------------------
 
     if not all([
-        name,
+        # name,
         age,
         gender,
         occupation,
@@ -54,7 +61,7 @@ def create_partner_profile():
         "user_id": user_id,
 
         "basic": {
-            "name": name,
+            # "name": name,
             "age": age,
             "gender": gender,
             "occupation": occupation

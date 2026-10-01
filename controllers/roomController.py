@@ -1,12 +1,19 @@
 from flask import request, jsonify
 from flask_jwt_extended import get_jwt_identity
-
+from bson import ObjectId
 from config.database import db
 
 
 def create_room():
 
     owner_id = get_jwt_identity()
+
+    if not ObjectId.is_valid(owner_id):
+        return jsonify({
+            "message": "Invalid user ID"
+        }), 400
+
+    owner_id = ObjectId(owner_id)
     data = request.get_json()
 
     # -------------------------

@@ -5,7 +5,7 @@ from controllers.partnersController import (
     create_partner_profile,
     get_partner_profiles
 )
-
+from utils.role_required import role_required
 
 partners_bp = Blueprint(
     "partners",
@@ -16,6 +16,7 @@ partners_bp = Blueprint(
 
 @partners_bp.route("/profile", methods=["POST"])
 @jwt_required()
+@role_required("partner_seeker")
 def create_profile():
     return create_partner_profile()
 

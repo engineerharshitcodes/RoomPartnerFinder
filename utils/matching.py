@@ -1,3 +1,22 @@
+from bson import ObjectId
+def convert_object_ids(data):
+    if isinstance(data, dict):
+        return {
+            key: convert_object_ids(value)
+            for key, value in data.items()
+        }
+
+    if isinstance(data, list):
+        return [
+            convert_object_ids(item)
+            for item in data
+        ]
+
+    if isinstance(data, ObjectId):
+        return str(data)
+
+    return data
+
 def categorical_match(value1, value2):
     """
     Compare two categorical values.
@@ -98,5 +117,53 @@ def preference_match(value1, value2):
 
     if value1 == "no_preference" or value2 == "no_preference":
         return 0.5
+
+    return 0.0
+def age_match(age, min_age, max_age):
+    """
+    Check whether the seeker's age
+    falls within the owner's preferred age range.
+    """
+
+    if age is None:
+        return 0.0
+
+    if min_age is not None and age < min_age:
+        return 0.0
+
+    if max_age is not None and age > max_age:
+        return 0.0
+
+    return 1.0
+
+
+def gender_match(seeker_gender, preferred_gender):
+    """
+    Check whether seeker's gender
+    matches owner's preference.
+    """
+
+    if preferred_gender == "no_preference":
+        return 0.5
+
+    if seeker_gender == preferred_gender:
+        return 1.0
+
+    return 0.0
+
+def location_similarity(area1, area2):
+    """
+    Compare two areas.
+
+    Same area       -> 1.0
+    Different area  -> 0.0
+    Missing area    -> 0.0
+    """
+
+    if not area1 or not area2:
+        return 0.0
+
+    if area1.lower() == area2.lower():
+        return 1.0
 
     return 0.0

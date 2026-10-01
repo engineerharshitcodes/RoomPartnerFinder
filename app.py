@@ -7,8 +7,11 @@ from routers.rooms import rooms_bp
 from routers.matching import matching_bp
 from routers.partners import partners_bp
 from routers.requests import requests_bp
+from config.indexes import create_indexes
+
 
 app = Flask(__name__)
+create_indexes()
 
 CORS(app)
 

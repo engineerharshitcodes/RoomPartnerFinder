@@ -1,5 +1,6 @@
 from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
+from bson import ObjectId
 
 from config.database import db
 from utils.matching import (
@@ -8,13 +9,24 @@ from utils.matching import (
     sleep_similarity,
     preference_match,
     age_match,
-    gender_match
+    gender_match,
+    location_similarity,
+    convert_object_ids
 )
-
-
 def find_matching_rooms():
 
     user_id = get_jwt_identity()
+
+    # -------------------------
+    # Validate user ID
+    # -------------------------
+
+    if not ObjectId.is_valid(user_id):
+        return jsonify({
+            "message": "Invalid user ID"
+        }), 400
+
+    user_id = ObjectId(user_id)
 
     # -------------------------
     # Find seeker's profile
@@ -34,6 +46,7 @@ def find_matching_rooms():
     # -------------------------
 
     city = seeker["location"]["city"]
+
     min_budget = seeker["budget"]["min"]
     max_budget = seeker["budget"]["max"]
 
@@ -49,16 +62,37 @@ def find_matching_rooms():
     matches = []
 
     # -------------------------
-    # Process each room
+    # Process rooms
     # -------------------------
 
     for room in rooms:
 
-        owner_lifestyle = room.get("lifestyle", {})
-        owner_personality = room.get("personality", {})
+        owner_lifestyle = room.get(
+            "lifestyle",
+            {}
+        )
 
-        seeker_lifestyle = seeker.get("lifestyle", {})
-        seeker_personality = seeker.get("personality", {})
+        owner_personality = room.get(
+            "personality",
+            {}
+        )
+
+        seeker_lifestyle = seeker.get(
+            "lifestyle",
+            {}
+        )
+        seeker_area = seeker["location"]["area"]
+        room_area = room["location"]["area"]
+
+        area_score = location_similarity(
+            seeker_area,
+            room_area
+        )
+
+        seeker_personality = seeker.get(
+            "personality",
+            {}
+        )
 
         owner_partner_preference = room.get(
             "partner_preference",
@@ -132,7 +166,7 @@ def find_matching_rooms():
         )
 
         # -------------------------
-        # Owner's preferences
+        # Owner preferences
         # -------------------------
 
         seeker_age = seeker["basic"]["age"]
@@ -190,7 +224,8 @@ def find_matching_rooms():
         # -------------------------
 
         weighted_score = (
-            food_score * weights.get("food", 3)
+            area_score * weights.get("location", 5)
+            + food_score * weights.get("food", 3)
             + smoking_score * weights.get("smoking", 5)
             + drinking_score * weights.get("drinking", 3)
 
@@ -216,7 +251,8 @@ def find_matching_rooms():
         # -------------------------
 
         total_weight = (
-            weights.get("food", 3)
+            weights.get("location", 5)
+            + weights.get("food", 3)
             + weights.get("smoking", 5)
             + weights.get("drinking", 3)
 
@@ -246,7 +282,10 @@ def find_matching_rooms():
             2
         )
 
-        # Convert ObjectId to string
+        # -------------------------
+        # Convert ObjectId
+        # -------------------------
+
         room["_id"] = str(room["_id"])
 
         matches.append({
@@ -255,13 +294,15 @@ def find_matching_rooms():
         })
 
     # -------------------------
-    # Sort highest score first
+    # Sort by compatibility
     # -------------------------
 
     matches.sort(
         key=lambda x: x["compatibility_score"],
         reverse=True
     )
+    
+    matches = convert_object_ids(matches)
 
     return jsonify({
         "count": len(matches),
